@@ -5,6 +5,9 @@ on:
     # Set any time that you'd like scrapers to run (in UTC)
     - cron: "1 6 * * *"
   workflow_dispatch:
+  push:
+    branches:
+      - fix-separate-cache-key
 
 env:
   CI: true
@@ -41,7 +44,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: ${{ env.PYTHON_VERSION }}-${{ hashFiles('**/Pipfile.lock') }}
+          key: ${{ env.PYTHON_VERSION }}-cron-${{ hashFiles('**/Pipfile.lock') }}
           restore-keys: |
             ${{ env.PYTHON_VERSION }}-
             pip-
