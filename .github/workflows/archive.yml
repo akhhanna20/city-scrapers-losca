@@ -39,8 +39,7 @@ jobs:
           path: .venv
           key: ${{ env.PYTHON_VERSION }}-archive-${{ hashFiles('**/Pipfile.lock') }}
           restore-keys: |
-            ${{ env.PYTHON_VERSION }}-
-            pip-
+            ${{ env.PYTHON_VERSION }}-archive-
 
       - name: Install dependencies
         run: pipenv sync
