@@ -1,10 +1,9 @@
 import re
-import unicodedata
+from collections import defaultdict
 
 from city_scrapers_core.constants import BOARD, CITY_COUNCIL, COMMITTEE, NOT_CLASSIFIED
 from city_scrapers_core.items import Meeting
 from city_scrapers_core.spiders import LegistarSpider
-from collections import defaultdict
 
 
 class LoscaMetroTransitSpider(LegistarSpider):
@@ -16,22 +15,21 @@ class LoscaMetroTransitSpider(LegistarSpider):
 
     custom_settings = {
         "ROBOTSTXT_OBEY": False,
+        "FEED_EXPORT_ENCODING": "utf-8",
     }
 
-    # Will add this later
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
-    #     # Can override since_year to start earlier
-    #     self.since_year = 2015
-    #     self._scraped_urls = set()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.since_year = 2020
+        self._scraped_urls = set()
 
     def parse_legistar(self, events):
         for event in events:
             title = event.get("Name", {}).get("label", "No Title")
 
-            if "test" in title.lower():
+            if "test" in title.lower() or "(sap)" in title.lower():
                 continue
-            
+
             start = self.legistar_start(event)
             if start:
                 meeting_location, description = self._parse_location(event)
@@ -48,7 +46,9 @@ class LoscaMetroTransitSpider(LegistarSpider):
                     source=self.legistar_source(event),
                 )
 
-                meeting["status"] = self._get_status(meeting)
+                meeting["status"] = self._get_status(
+                    meeting, text=event.get("Meeting Time", "")
+                )
                 meeting["id"] = self._get_id(meeting)
 
             yield meeting
@@ -112,7 +112,6 @@ class LoscaMetroTransitSpider(LegistarSpider):
 
         return events
 
-
     def _parse_classification(self, item):
         """Parse or generate classification from allowed options."""
         name_label = item.get("Name", {}).get("label", "").lower()
@@ -123,18 +122,14 @@ class LoscaMetroTransitSpider(LegistarSpider):
         if "council" in name_label:
             return CITY_COUNCIL
         return NOT_CLASSIFIED
-    
+
     def _clean_text(self, text):
         """Normalize unicode characters in text (e.g. curly quotes, accented chars)."""
         if not text:
             return text
-        # Normalize unicode to composed form (NFC), handles chars like ñ, é, etc.
-        text = unicodedata.normalize("NFC", text)
-        # Replace curly/smart apostrophes and quotes with standard ASCII equivalents
         text = text.replace("\u2019", "'").replace("\u2018", "'")
         text = text.replace("\u201c", '"').replace("\u201d", '"')
         return text
-    
 
     def _parse_location(self, item):
         """
