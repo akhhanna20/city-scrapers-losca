@@ -1,5 +1,6 @@
 import re
 from collections import defaultdict
+from datetime import time
 
 from city_scrapers_core.constants import BOARD, CITY_COUNCIL, COMMITTEE, NOT_CLASSIFIED
 from city_scrapers_core.items import Meeting
@@ -18,6 +19,16 @@ class LoscaMetroTransitSpider(LegistarSpider):
         "FEED_EXPORT_ENCODING": "utf-8",
     }
 
+    agencies_start_time = {
+        "Board of Directors - Regular Board Meeting": time(10, 0),
+        "Operations, Safety, and Customer Experience Committee": time(13, 0),
+        "Executive Management Committee": time(11, 0),
+        "Finance, Budget and Audit Committee": time(10, 0),
+        "Planning and Programming Committee": time(11, 0),
+        "Ad Hoc Board Composition Committee": time(13, 0),
+        "Construction Committee": time(13, 0),
+    }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.since_year = 2020
@@ -32,6 +43,12 @@ class LoscaMetroTransitSpider(LegistarSpider):
 
             start = self.legistar_start(event)
             if start:
+                if start.hour == 0 and start.minute == 0:
+                    predefined_time = self.agencies_start_time.get(title, None)
+                    if predefined_time:
+                        start = start.replace(
+                            hour=predefined_time.hour, minute=predefined_time.minute
+                        )
                 meeting_location, description = self._parse_location(event)
                 meeting = Meeting(
                     title=self._clean_text(title),
