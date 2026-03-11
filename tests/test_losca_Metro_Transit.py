@@ -88,7 +88,7 @@ def test_links():
             "title": "Meeting Details",
         },
         {
-            "href": "https://metro.legistar.com/Video.aspx?Mode=Granicus&ID1=3960&Mode2=Video", # noqa
+            "href": "https://metro.legistar.com/Video.aspx?Mode=Granicus&ID1=3960&Mode2=Video",  # noqa
             "title": "Audio",
         },
     ]
