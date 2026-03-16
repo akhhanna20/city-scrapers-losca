@@ -85,7 +85,6 @@ class LoscaInglewoodMixin(CityScrapersSpider, metaclass=LoscaInglewoodMixinMeta)
         rows_by_date = defaultdict(list)
 
         for row in response.css("tr.catAgendaRow"):
-            # print ("ROW", row)
             start = self._parse_start(row)
             if not start:
                 continue
