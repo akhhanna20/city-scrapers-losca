@@ -183,7 +183,7 @@ class LoscaInglewoodMixin(CityScrapersSpider, metaclass=LoscaInglewoodMixinMeta)
             title = a.css("::text").get(default="").strip()
             title_lower = title.lower()
 
-            if "previous version" in title_lower.lower():
+            if "previous version" in title_lower:
                 continue
             if "packet" in title_lower:
                 title = "Agenda Packet"

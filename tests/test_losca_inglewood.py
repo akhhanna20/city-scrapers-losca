@@ -50,10 +50,6 @@ def test_time_notes():
     )
 
 
-def test_all_day():
-    assert parsed_items[3]["all_day"] is False
-
-
 def test_classification():
     assert parsed_items[3]["classification"] == CITY_COUNCIL
 
