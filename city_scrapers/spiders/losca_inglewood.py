@@ -12,7 +12,6 @@ spider_configs = [
         "agency": "City of Inglewood - City Council",
         "cat_id": 3,
         "start_year": 2023,
-        "time_notes": "See agenda for meeting time",
         "location": {
             "name": "Inglewood City Hall",
             "address": "One Manchester Blvd, Inglewood, CA 90301",
@@ -24,7 +23,6 @@ spider_configs = [
         "agency": "City of Inglewood - Arts Commission",
         "cat_id": 6,
         "start_year": 2023,
-        "time_notes": "See agenda for meeting time",
         "location": {
             "name": "Inglewood City Hall",
             "address": "One Manchester Blvd, Inglewood, CA 90301",
@@ -36,7 +34,6 @@ spider_configs = [
         "agency": "City of Inglewood - Library Board",
         "cat_id": 5,
         "start_year": 2023,
-        "time_notes": "See agenda for meeting time",
         "location": {
             "name": "Inglewood City Hall",
             "address": "One Manchester Blvd, Inglewood, CA 90301",
@@ -48,7 +45,6 @@ spider_configs = [
         "agency": "City of Inglewood - Park & Recreation Commission",
         "cat_id": 7,
         "start_year": 2023,
-        "time_notes": "See agenda for meeting time",
         "location": {
             "name": "Inglewood City Hall",
             "address": "One Manchester Blvd, Inglewood, CA 90301",

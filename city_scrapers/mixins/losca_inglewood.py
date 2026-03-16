@@ -38,7 +38,7 @@ class LoscaInglewoodMixin(CityScrapersSpider, metaclass=LoscaInglewoodMixinMeta)
     agency = None
     cat_id = None
     start_year = None
-    time_notes = "See agenda for meeting time"
+    time_notes = "Please refer to the meeting attachment for more accurate start time"
     timezone = "America/Los_Angeles"
 
     BASE_URL = "https://www.cityofinglewood.org"
@@ -120,7 +120,7 @@ class LoscaInglewoodMixin(CityScrapersSpider, metaclass=LoscaInglewoodMixinMeta)
                 meeting = Meeting(
                     title=title,
                     description="",
-                    classification=self._parse_classification(row),
+                    classification=self._parse_classification(),
                     start=start,
                     end=None,
                     all_day=False,
@@ -153,7 +153,7 @@ class LoscaInglewoodMixin(CityScrapersSpider, metaclass=LoscaInglewoodMixinMeta)
 
         return meeting_type
 
-    def _parse_classification(self, item):
+    def _parse_classification(self):
         """Parse classification from agency name."""
         agency_lower = self.agency.lower()
         if "council" in agency_lower:
@@ -169,13 +169,6 @@ class LoscaInglewoodMixin(CityScrapersSpider, metaclass=LoscaInglewoodMixinMeta)
         date_str = agenda_attr.replace("Agenda for ", "").strip()
         start = dateparse(date_str)
         return start
-
-    def _parse_location(self, item):
-        """Parse or generate location."""
-        return {
-            "address": "",
-            "name": "",
-        }
 
     def _parse_links(self, row):
         """Extract all document links from the download popout menu."""
