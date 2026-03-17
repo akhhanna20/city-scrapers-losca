@@ -38,7 +38,7 @@ class LoscaInglewoodMixin(CityScrapersSpider, metaclass=LoscaInglewoodMixinMeta)
     agency = None
     cat_id = None
     start_year = None
-    time_notes = "Please refer to the meeting attachment for more accurate start time"
+    time_notes = "Please refer to the meeting attachment for more accurate information about the meeting location and time."  # noqa
     timezone = "America/Los_Angeles"
 
     BASE_URL = "https://www.cityofinglewood.org"
