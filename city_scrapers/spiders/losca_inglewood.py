@@ -50,6 +50,17 @@ spider_configs = [
             "address": "One Manchester Blvd, Inglewood, CA 90301",
         },
     },
+    {
+        "class_name": "LoscaInglewoodPlanningCommissionSpider",
+        "name": "losca_inglewood_planning_commission",
+        "agency": "City of Inglewood - Planning Commission",
+        "cat_id": 4,
+        "start_year": 2023,
+        "location": {
+            "name": "Inglewood City Hall",
+            "address": "One Manchester Blvd, Inglewood, CA 90301",
+        },
+    },
 ]
 
 

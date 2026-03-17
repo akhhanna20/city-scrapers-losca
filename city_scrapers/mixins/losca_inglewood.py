@@ -202,6 +202,12 @@ class LoscaInglewoodMixin(CityScrapersSpider, metaclass=LoscaInglewoodMixinMeta)
             if not minutes_href.startswith("http"):
                 minutes_href = self.BASE_URL + minutes_href
             links.append({"href": minutes_href, "title": "Minutes"})
+        # Media link from the separate td.media cell
+        media_href = row.css("td.media a::attr(href)").get(default="").strip()
+        if media_href and media_href not in seen:
+            if not media_href.startswith("http"):
+                media_href = self.BASE_URL + media_href
+            links.append({"href": media_href, "title": "Media"})
 
         return links
 
