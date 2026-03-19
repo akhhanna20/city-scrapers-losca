@@ -19,9 +19,9 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
     agency = "Inglewood Unified School District"
     timezone = "America/Los_Angeles"
 
-    main_url = "https://simbli.eboardsolutions.com/SB_Meetings/SB_MeetingListing.aspx?S=36030265"
+    main_url = "https://simbli.eboardsolutions.com/SB_Meetings/SB_MeetingListing.aspx?S=36030265"  # noqa
     api_url = "https://simbli.eboardsolutions.com/Services/api/GetMeetingListing"
-    video_url = "https://www.inglewoodusd.com/apps/pages/index.jsp?uREC_ID=1471610&type=d&pREC_ID=1753679"
+    video_url = "https://www.inglewoodusd.com/apps/pages/index.jsp?uREC_ID=1471610&type=d&pREC_ID=1753679"  # noqa
     school_id = "36030265"
 
     custom_settings = {
@@ -35,7 +35,7 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
     def start_requests(self):
         """
         Fetch main page with curl_cffi to bypass fingerprinting, extract tokens.
-        curl_cffi with impersonate="chrome120" mimics Chrome's TLS fingerprint at a low level.
+        curl_cffi with impersonate="chrome120" mimics Chrome's TLS fingerprint at a low level. # noqa
         It bypasses it and gets the real page with the tokens embedded in the HTML.
         """
         self._video_links_by_date = self._fetch_video_links()
@@ -67,8 +67,10 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
         )
 
         if connection_string and security_token:
-            
-            yield from self._fetch_main_meetings_page(0, connection_string, security_token)
+
+            yield from self._fetch_main_meetings_page(
+                0, connection_string, security_token
+            )
 
     def _fetch_video_links(self):
         """Fetch video links from the regular webpage."""
@@ -79,7 +81,7 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
                 f"status={response.status_code}, length={len(response.text)}"
             )
             return {}
-        
+
         selector_parsel = Selector(text=response.text)
         videos_by_date = {}
 
@@ -87,27 +89,29 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
             for div in section.css("div"):
                 text = div.css("::text").get(default="").strip()
                 href = div.css("a::attr(href)").get()
- 
+
                 # Skip empty divs and divs that are just links
                 if not text or text == "\xa0" or href:
                     continue
- 
-                # Try to parse date from text e.g. "Regular Board Meeting, January 14, 2026"
+
+                # Try to parse date from text
                 try:
                     date = dateparse(text, fuzzy=True).date()
                 except (ParserError, ValueError, OverflowError):
+                    self.logger.warning(f"Failed to parse date from text: {text}")
                     continue
- 
+
                 # Get the next sibling div that contains a link
-                next_href = div.xpath(
-                    "following-sibling::div[.//a][1]//@href"
-                ).get()
- 
+                next_href = (
+                    div.xpath("following-sibling::div[.//a][1]//@href").get()
+                    if div
+                    else None
+                )  # noqa
+
                 if next_href and date:
                     videos_by_date[date] = {"href": next_href, "title": "Video"}
- 
+
         return videos_by_date
-        
 
     def _extract_token(self, html_text, patterns):
         """Extract token from HTML using regex patterns."""
@@ -117,7 +121,9 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
                 return match.group(1)
         return None
 
-    def _fetch_main_meetings_page(self, record_start, connection_string, security_token):
+    def _fetch_main_meetings_page(
+        self, record_start, connection_string, security_token
+    ):
         """Fetch a page of meetings via API with pagination (50 per page)."""
         payload = {
             "ListingType": "0",
@@ -143,7 +149,7 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
             "DeletedBy": None,
             "DeletedOnUTC": None,
             "IsDeleted": False,
-            "FilterExp": "ML_TypeTitle in ('Board Meeting') "
+            "FilterExp": "ML_TypeTitle in ('Board Meeting') ",
         }
 
         yield scrapy.Request(
@@ -170,7 +176,7 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
             data = json.loads(response.text)
         except json.JSONDecodeError:
             self.logger.warning(
-                f"Failed to parse JSON response from {response.url}: {response.text[:200]}"
+                f"Failed to parse JSON response from {response.url}: {response.text[:200]}"  # noqa
             )
             return
 
@@ -190,11 +196,9 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
                 connection_string = response.meta["connection_string"]
                 security_token = response.meta["security_token"]
             except AttributeError:
-                self.logger.warning(
-                    "response.meta not available, skipping pagination"
-                )
+                self.logger.warning("response.meta not available, skipping pagination")
                 return
-            
+
             next_offset = record_start + len(meetings)
             yield from self._fetch_main_meetings_page(
                 next_offset,
@@ -209,7 +213,7 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
             return None
 
         meeting_id = meeting_data.get("Master_MeetingID")
-        meeting_url = f"https://simbli.eboardsolutions.com/SB_Meetings/ViewMeeting.aspx?S={self.school_id}&MID={meeting_id}"
+        meeting_url = f"https://simbli.eboardsolutions.com/SB_Meetings/ViewMeeting.aspx?S={self.school_id}&MID={meeting_id}"  # noqa
 
         raw_title = meeting_data.get("MM_MeetingTitle", "Board Meeting")
         links = [{"href": meeting_url, "title": "Meeting Details"}]
@@ -219,6 +223,8 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
         if video:
             links.append(video)
 
+        location, session_time_notes = self._parse_location(meeting_data)
+
         meeting = Meeting(
             title=self._normalize_title(raw_title),
             description="",
@@ -226,8 +232,9 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
             start=start,
             end=None,
             all_day=False,
-            time_notes="Please refer to the meeting attachments for more accurate information about the meeting location and time.",
-            location=self._parse_location(meeting_data),
+            time_notes=session_time_notes
+            or "Please refer to the meeting attachments for more accurate information about the meeting location and time.",  # noqa
+            location=location,
             links=links,
             source=self.main_url,
         )
@@ -272,6 +279,7 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
             try:
                 return datetime.strptime(date_str, fmt)
             except ValueError:
+                self.logger.debug(f"Failed to parse date string: {date_str}")
                 continue
         return None
 
@@ -282,11 +290,19 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
         address3 = (meeting_data.get("MM_Address3") or "").strip()
 
         location_address = " ".join(filter(None, [address2, address3])).strip()
+        board_room = "Dr. Ernest Shaw Board Room"
 
-        return {
-            "name": address1,
-            "address": location_address,
-        }
+        if board_room in address1:
+            # Find where board room name starts and extract everything before it
+            idx = address1.index(board_room)
+            session_time_notes = address1[:idx].strip(" -|/").strip()
+
+            return {
+                "name": board_room,
+                "address": location_address,
+            }, session_time_notes
+
+        return {"name": "", "address": location_address}, ""
 
     def _extract_meetings_from_response(self, data):
         """Extract meetings list from various JSON response structures."""

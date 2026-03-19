@@ -60,7 +60,10 @@ def test_time_notes(parsed_items):
 
 
 def test_id(parsed_items):
-    assert parsed_items[0]["id"] == "losca_inglewood_usd/202603111700/x/regular_board_meeting"
+    assert (
+        parsed_items[0]["id"]
+        == "losca_inglewood_usd/202603111700/x/regular_board_meeting"
+    )  # noqa
 
 
 def test_status(parsed_items):
@@ -78,9 +81,32 @@ def test_location(parsed_items):
     }
 
 
+def test_session_time_notes(parsed_items):
+    # Meeting with session times in address1
+    session_item = next(
+        item for item in parsed_items if item["start"] == datetime(2026, 1, 28, 17, 0)
+    )
+    assert (
+        session_item["time_notes"] == "CLOSED SESSION 5:00p.m. / PUBLIC SESSION 5:30p.m"
+    )
+
+
+def test_session_location(parsed_items):
+    session_item = next(
+        item for item in parsed_items if item["start"] == datetime(2026, 1, 28, 17, 0)
+    )
+    assert session_item["location"] == {
+        "name": "Dr. Ernest Shaw Board Room",
+        "address": "401 S. Inglewood Avenue Inglewood, CA 90301",
+    }
+
+
 def test_links_with_video(parsed_items):
     assert parsed_items[0]["links"] == [
-        {"href": "https://simbli.eboardsolutions.com/SB_Meetings/ViewMeeting.aspx?S=36030265&MID=12496", "title": "Meeting Details"},
+        {
+            "href": "https://simbli.eboardsolutions.com/SB_Meetings/ViewMeeting.aspx?S=36030265&MID=50957",  # noqa
+            "title": "Meeting Details",
+        },
         {"href": "https://www.youtube.com/live/rckdkcEcGag", "title": "Video"},
     ]
 
@@ -91,14 +117,11 @@ def test_links_no_video(parsed_items):
 
 
 def test_source(parsed_items):
-    assert parsed_items[0]["source"] == "https://simbli.eboardsolutions.com/SB_Meetings/SB_MeetingListing.aspx?S=36030265"
+    assert (
+        parsed_items[0]["source"]
+        == "https://simbli.eboardsolutions.com/SB_Meetings/SB_MeetingListing.aspx?S=36030265"  # noqa
+    )
 
 
 def test_all_day(parsed_items):
     assert parsed_items[0]["all_day"] is False
-
-def test_links_with_video(parsed_items):
-    assert parsed_items[0]["links"] == [
-        {"href": "https://simbli.eboardsolutions.com/SB_Meetings/ViewMeeting.aspx?S=36030265&MID=50957", "title": "Meeting Details"},
-        {"href": "https://www.youtube.com/live/rckdkcEcGag", "title": "Video"},
-    ]
