@@ -5,7 +5,7 @@ from datetime import datetime
 
 import requests
 import scrapy
-from city_scrapers_core.constants import BOARD, NOT_CLASSIFIED
+from city_scrapers_core.constants import BOARD
 from city_scrapers_core.items import Meeting
 from city_scrapers_core.spiders import CityScrapersSpider
 from curl_cffi import requests as curl_requests
@@ -70,6 +70,11 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
 
             yield from self._fetch_main_meetings_page(
                 0, connection_string, security_token
+            )
+
+        else:
+            self.logger.warning(
+                "Failed to extract connection_string or security_token from main page"  # noqa
             )
 
     def _fetch_video_links(self):
@@ -226,9 +231,9 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
         location, session_time_notes = self._parse_location(meeting_data)
 
         meeting = Meeting(
-            title=self._normalize_title(raw_title),
+            title=self._parse_title(raw_title),
             description="",
-            classification=self._parse_classification(raw_title),
+            classification=BOARD,
             start=start,
             end=None,
             all_day=False,
@@ -244,30 +249,13 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
 
         return meeting
 
-    def _normalize_title(self, title):
-        """Remove date patterns and clean up meeting titles."""
+    def _parse_title(self, title):
+        """Clean up meeting titles."""
         title = html.unescape(title)
-
-        date_patterns = [
-            r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\s+",  # noqa
-            r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\s+",  # noqa
-            r"\b\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\s+",  # noqa
-        ]
-        for pattern in date_patterns:
-            title = re.sub(pattern, "", title, flags=re.IGNORECASE)
-
         title = re.sub(
             r"\(\s*(cancel\w+|rescheduled)\s*\)", r"\1", title, flags=re.IGNORECASE
         )
-
-        return " ".join(title.split()).strip()
-
-    def _parse_classification(self, title):
-        """Classify meeting based on title keywords."""
-        title_lower = title.lower()
-        if "board" in title_lower:
-            return BOARD
-        return NOT_CLASSIFIED
+        return title.strip()
 
     def _parse_start_time(self, meeting_data):
         """Parse meeting start time from various formats."""
