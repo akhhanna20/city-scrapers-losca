@@ -5,7 +5,7 @@ from datetime import datetime
 
 import requests
 import scrapy
-from city_scrapers_core.constants import BOARD
+from city_scrapers_core.constants import BOARD, COMMITTEE, NOT_CLASSIFIED
 from city_scrapers_core.items import Meeting
 from city_scrapers_core.spiders import CityScrapersSpider
 from curl_cffi import requests as curl_requests
@@ -48,7 +48,8 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
         if not response or len(response.text) < 10000:
             self.logger.warning(
                 f"Unexpected response from {self.main_url}: "
-                f"status={response.status_code}, length={len(response.text)}"
+                f"status={response.status_code if response else 'no response'}, "
+                f"length={len(response.text) if response else 0}"
             )
             return
 
@@ -74,7 +75,8 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
 
         else:
             self.logger.warning(
-                "Failed to extract connection_string or security_token from main page"  # noqa
+                f"Failed to extract tokens from response from {self.main_url}: "
+                f"status={response.status_code}, length={len(response.text)}"
             )
 
     def _fetch_video_links(self):
@@ -83,7 +85,7 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
         if not response or response.status_code != 200:
             self.logger.warning(
                 f"Failed to fetch video links from {self.video_url}: "
-                f"status={response.status_code}, length={len(response.text)}"
+                f"status={response.status_code if response else 'no response'}"
             )
             return {}
 
@@ -103,7 +105,9 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
                 try:
                     date = dateparse(text, fuzzy=True).date()
                 except (ParserError, ValueError, OverflowError):
-                    self.logger.warning(f"Failed to parse date from text: {text}")
+                    self.logger.debug(
+                        f"Skipping div, could not parse date from text: {text}"
+                    )
                     continue
 
                 # Get the next sibling div that contains a link
@@ -111,7 +115,7 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
                     div.xpath("following-sibling::div[.//a][1]//@href").get()
                     if div
                     else None
-                )  # noqa
+                )
 
                 if next_href and date:
                     videos_by_date[date] = {"href": next_href, "title": "Video"}
@@ -154,7 +158,7 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
             "DeletedBy": None,
             "DeletedOnUTC": None,
             "IsDeleted": False,
-            "FilterExp": "ML_TypeTitle in ('Board Meeting') ",
+            "FilterExp": "",
         }
 
         yield scrapy.Request(
@@ -178,7 +182,7 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
     def parse(self, response):
         """Parse API response and handle pagination."""
         try:
-            data = json.loads(response.text)
+            data = response.json()
         except json.JSONDecodeError:
             self.logger.warning(
                 f"Failed to parse JSON response from {response.url}: {response.text[:200]}"  # noqa
@@ -201,7 +205,9 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
                 connection_string = response.meta["connection_string"]
                 security_token = response.meta["security_token"]
             except AttributeError:
-                self.logger.warning("response.meta not available, skipping pagination")
+                self.logger.warning(
+                    f"Failed to extract pagination data from response from {response.url}: {response.text[:200]}"  # noqa
+                )
                 return
 
             next_offset = record_start + len(meetings)
@@ -220,7 +226,7 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
         meeting_id = meeting_data.get("Master_MeetingID")
         meeting_url = f"https://simbli.eboardsolutions.com/SB_Meetings/ViewMeeting.aspx?S={self.school_id}&MID={meeting_id}"  # noqa
 
-        raw_title = meeting_data.get("MM_MeetingTitle", "Board Meeting")
+        raw_title = meeting_data.get("MM_MeetingTitle")
         links = [{"href": meeting_url, "title": "Meeting Details"}]
 
         # Attach video link if one exists for this date
@@ -233,7 +239,7 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
         meeting = Meeting(
             title=self._parse_title(raw_title),
             description="",
-            classification=BOARD,
+            classification=self._parse_classification(meeting_data),
             start=start,
             end=None,
             all_day=False,
@@ -267,9 +273,20 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
             try:
                 return datetime.strptime(date_str, fmt)
             except ValueError:
-                self.logger.debug(f"Failed to parse date string: {date_str}")
+                self.logger.debug(
+                    f"Could not parse date string '{date_str}' with format '{fmt}'"
+                )
                 continue
         return None
+
+    def _parse_classification(self, meeting_data):
+        """Classify meeting based on ML_TypeTitle from API."""
+        type_title = (meeting_data.get("ML_TypeTitle") or "").lower()
+        if "board" in type_title:
+            return BOARD
+        elif "committee" in type_title:
+            return COMMITTEE
+        return NOT_CLASSIFIED
 
     def _parse_location(self, meeting_data):
         """Parse meeting location from Simbli data."""
@@ -279,15 +296,17 @@ class LoscaInglewoodUsdSpider(CityScrapersSpider):
 
         location_address = " ".join(filter(None, [address2, address3])).strip()
         board_room = "Dr. Ernest Shaw Board Room"
+        board_room_address = "401 S. Inglewood Avenue Inglewood, CA 90301"
 
-        if board_room in address1:
-            # Find where board room name starts and extract everything before it
-            idx = address1.index(board_room)
-            session_time_notes = address1[:idx].strip(" -|/").strip()
-
+        if board_room in address1 or board_room in address2 or board_room in address3:
+            # Extract session time notes if present before board_room in address1
+            session_time_notes = ""
+            if board_room in address1:
+                idx = address1.index(board_room)
+                session_time_notes = address1[:idx].strip(" -|/").strip()
             return {
                 "name": board_room,
-                "address": location_address,
+                "address": board_room_address,
             }, session_time_notes
 
         return {"name": "", "address": location_address}, ""
